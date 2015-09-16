@@ -716,12 +716,13 @@ return: player id if a match is found, else -1
 int Lmdp_ClientIdFromString(gentity_t *to, const char *s)
 {
 	int i, m = -1;
-	char *err = NULL;
+	char *err = NULL;	// error to report
 
 	if (*s) {
 		gclient_t *cl = NULL;
 
 		if (StringIsInteger(s)) {
+			// string is a number
 			i = atoi(s);
 
 			if (i >= 0 && i < g_maxclients) {
@@ -737,6 +738,7 @@ int Lmdp_ClientIdFromString(gentity_t *to, const char *s)
 		}
 		else
 		{
+			// string is possibly a name or partial name
 			char cleanName[MAX_NAME_LENGTH] = { 0 };
 			for (i = 0, cl = g_clients; i < g_maxclients; i++, cl++) {
 				if (cl->pers.connected == CON_CONNECTED)
