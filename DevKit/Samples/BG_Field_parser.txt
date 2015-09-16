@@ -1,0 +1,206 @@
+
+These are the DataField callbacks Lugormod uses to simplify access
+to simple structs, in the same way that BG_ParseFields does.
+
+To use them, set
+the parse func to Lmd_Data_AutoFieldCallback_Parse,
+the write func to Lmd_Data_AutoFieldCallback_Write,
+the free func to Lmd_Data_AutoFieldCallback_Free,
+
+and the args of all 3 to an instance of DataAutoFieldArgs_t describing the field.
+
+
+typedef struct DataAutoFieldArgs_s
+{
+	int ofs;
+	fieldtype_t	type;
+} DataAutoFieldArgs_t;
+
+
+
+qboolean BG_ParseType(fieldtype_t type, const char *value, void *target) {
+	float	v;
+	vec3_t	vec;
+	const char *p;
+	byte *b = (byte *)target;
+
+	switch( type ) {
+	case F_QSTRING:
+		p = value;
+#ifdef QAGAME
+		*(char **)(b) = G_NewString(COM_ParseExt(&p, qfalse));
+#else
+		*(char **)(b) = CG_NewString(COM_ParseExt(&p, qfalse));
+#endif
+		break;
+	case F_LSTRING:
+	case F_GSTRING:
+#ifdef QAGAME
+		*(char **)(b) = G_NewString (value);
+#else
+		*(char **)(b) = CG_NewString (value);
+#endif
+		return qtrue;
+		break;
+	case F_VECTOR:
+		//RoboPhred: clear to 0 to avoid random values.
+		memset(vec, 0, sizeof(vec));
+		sscanf (value, "%f %f %f", &vec[0], &vec[1], &vec[2]);
+		((float *)(b))[0] = vec[0];
+		((float *)(b))[1] = vec[1];
+		((float *)(b))[2] = vec[2];
+		return qtrue;
+		break;
+	case F_INT:
+		*(int *)(b) = atoi(value);
+		return qtrue;
+		break;
+	case F_FLOAT:
+		*(float *)(b) = atof(value);
+		return qtrue;
+		break;
+	case F_ANGLEHACK:
+		v = atof(value);
+        ((float *)(b))[0] = 0;
+		((float *)(b))[1] = v;
+		((float *)(b))[2] = 0;
+		return qtrue;
+		break;
+
+#ifdef QAGAME
+	case F_PARM1:
+	case F_PARM2:
+	case F_PARM3:
+	case F_PARM4:
+	case F_PARM5:
+	case F_PARM6:
+	case F_PARM7:
+	case F_PARM8:
+	case F_PARM9:
+	case F_PARM10:
+	case F_PARM11:
+	case F_PARM12:
+	case F_PARM13:
+	case F_PARM14:
+	case F_PARM15:
+	case F_PARM16:
+		Q3_SetParm( ((gentity_t *)(target))->s.number, (type - F_PARM1), (char *) value );
+		return qtrue;
+		break;
+#endif
+	default:
+	case F_IGNORE:
+		break;
+	}
+
+	return qfalse;
+}
+
+qboolean BG_GetField( BG_field_t *l_field, char *value, unsigned int sze, byte *ent ){
+	BG_field_t	*f = l_field;
+	byte	*b;
+	memset(value, 0, sze);
+
+	b = (byte *)ent;
+
+	switch( f->type ) {
+	case F_QSTRING:
+		if(*(char **)(b+f->ofs) == NULL)
+			Q_strcat(value, sze, "\"\"");
+		else {
+			Q_strcat(value, sze, "\"");
+			Q_strcat(value, sze,*(char **)(b+f->ofs));
+			Q_strcat(value, sze, "\"");
+		}
+		return qtrue;
+		break;
+	case F_LSTRING:
+	case F_GSTRING:
+
+		if(*(char **)(b+f->ofs) == NULL)
+			Q_strcat(value, sze,"NULL");
+		else
+			Q_strcat(value, sze,*(char **)(b+f->ofs));
+		return qtrue;
+		break;
+	case F_VECTOR:
+		//not in ui
+		//Q_strcat(value, sze, vtos(((float *)(b+f->ofs))));
+		Q_strcat(value, sze, va("%f %f %f", ((float *)(b+f->ofs))[0], ((float *)(b+f->ofs))[1], ((float *)(b+f->ofs))[2]));
+		return qtrue;
+		break;
+	case F_INT:
+		Q_strcat(value, sze, va("%i", *(int *)(b+f->ofs)));
+		return qtrue;
+		break;
+	case F_FLOAT:
+		Q_strcat(value, sze, va("%f", *(float *)(b+f->ofs)));
+		return qtrue;
+		break;
+	case F_ANGLEHACK:
+		Q_strcat(value, sze, va("0 %f 0", ((float *)(b+f->ofs))[1]));
+		return qtrue;
+		break;
+#ifdef QAGAME
+	case F_PARM1:
+	case F_PARM2:
+	case F_PARM3:
+	case F_PARM4:
+	case F_PARM5:
+	case F_PARM6:
+	case F_PARM7:
+	case F_PARM8:
+	case F_PARM9:
+	case F_PARM10:
+	case F_PARM11:
+	case F_PARM12:
+	case F_PARM13:
+	case F_PARM14:
+	case F_PARM15:
+	case F_PARM16:
+		//Q3_SetParm( ((gentity_t *)(ent))->s.number, (f->type - F_PARM1), (char *) value );
+		//Q_strncpyz(value, "TODO: get q3 parameter and report it here", sze);
+		//va so it writes NULL if need be
+		//Q_strncpyz(value, va("%s", ent->parms->parm[(f->type - F_PARM1)]), sze);
+		break;
+#endif
+
+	default:
+	case F_IGNORE:
+		break;
+	}
+	return qfalse;
+}
+
+void BG_FreeField(fieldtype_t type, void *target) {
+	switch(type) {
+	case F_GSTRING:
+	case F_LSTRING:
+	case F_QSTRING:
+		G_Free(*(char **)target);
+	}
+}
+
+
+qboolean Lmd_Data_AutoFieldCallback_Parse(char *key, char *value, void *target, void *args) {
+	if (value != NULL && value[0]) {
+		DataAutoFieldArgs_t *fieldArgs = (DataAutoFieldArgs_t *) args;
+		BG_ParseType(fieldArgs->type, value, (byte *) target + fieldArgs->ofs);
+		return qtrue;
+	}
+
+	return qfalse;
+}
+
+DataWriteResult_t Lmd_Data_AutoFieldCallback_Write(void *target, char key[], int keySize, char value[], int valueSize, void **writeState, void *args) {
+	DataAutoFieldArgs_t *fieldArgs = (DataAutoFieldArgs_t *) args;
+	BG_field_t f = { key, fieldArgs->ofs, fieldArgs->type };
+	BG_GetField(&f, value, valueSize, (byte *)target);
+
+	return DWR_COMPLETE;
+}
+
+void Lmd_Data_AutoFieldCallback_Free(void *state, void *args) {
+	DataAutoFieldArgs_t *fieldArgs = (DataAutoFieldArgs_t *) args;
+	BG_FreeField(fieldArgs->type, (byte *) state + fieldArgs->ofs);
+}

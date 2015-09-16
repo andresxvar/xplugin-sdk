@@ -1,0 +1,47 @@
+
+The use of the argument fields in DataField_t is complicated by older compilers lacking the ability to instantiate a const struct ptr of arbitrary type.  C99 compilers can use &(argtype){field1, field2, ...}, but earlier versions must define the contents as a global variable.  To simplify this, Lugormod uses a series of code generator macros, included in this file.
+
+They are used like this:
+// Define the fields list
+#define StatFields_Base(_m) \
+	_m##_AUTO(kills, STATOFS(kills), F_INT) \
+	_m##_AUTO(deaths, STATOFS(deaths), F_INT) \
+	_m##_AUTO(shots, STATOFS(shots), F_INT) \
+	_m##_AUTO(hits, STATOFS(hits), F_INT) \
+	_m##_AUTO(duels, STATOFS(duels), F_INT) \
+	_m##_AUTO(duelsWon, STATOFS(duelsWon), F_INT) \
+	_m##_AUTO(stashes, STATOFS(stashes), F_INT)
+
+// Allocate the global variables for the arguments
+StatFields_Base(DEFINE_FIELD_PRE)
+
+// Name the field structure as StatsFields
+DATAFIELDS_BEGIN(StatsFields)
+// Write out the field structure
+StatFields_Base(DEFINE_FIELD_LIST)
+DATAFIELDS_END
+
+
+
+
+
+// Field generation
+
+#define AUTOFIELD(name, ofs, type) {name, qfalse, Lmd_Data_AutoFieldCallback_Parse, (void*)&DataAutoFieldArgs_t(ofs, type)}
+
+// Until the compiler supports compound literals, this will have to do.
+#define DEFINE_FIELD_PRE_AUTO(name, ofs, type) const DataAutoFieldArgs_t DataFieldArgs_##name = { ofs, type };
+#define DEFINE_FIELD_PRE_FUNC(name, parseFunc, writeFunc, args)
+#define DEFINE_FIELD_PRE_PREF(prefix, parseFunc, writeFunc, args)
+#define DEFINE_FIELD_PRE_DEFL(parseFunc, writeFunc, args)
+
+#define DATAFIELDS_BEGIN(name) const DataField_t name [] = {
+#define DEFINE_FIELD_LIST_AUTO(name, ofs, type) {#name, qfalse, Lmd_Data_AutoFieldCallback_Parse, (void *) &DataFieldArgs_##name, Lmd_Data_AutoFieldCallback_Write, (void *) &DataFieldArgs_##name, Lmd_Data_AutoFieldCallback_Free, (void *) &DataFieldArgs_##name},
+#define DEFINE_FIELD_LIST_FUNC(name, parseFunc, writeFunc, args) {#name, qfalse, parseFunc, args, writeFunc, args},
+#define DEFINE_FIELD_LIST_PREF(prefix, parseFunc, writeFunc, args) {#prefix, qtrue, parseFunc, args, writeFunc, args},
+#define DEFINE_FIELD_LIST_DEFL(parseFunc, writeFunc, args)		 {NULL, qtrue, parseFunc, args, writeFunc, args},
+#define DATAFIELDS_END };
+
+#define DATAFIELDS_COUNT(name) (sizeof(name) / sizeof(DataField_t))
+
+#endif
