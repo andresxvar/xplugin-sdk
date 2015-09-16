@@ -267,7 +267,7 @@ int Cmd_allskills_f(gentity_t *player)
 	}
 	else if (professionNum == PROFESSION_MERC)
 	{
-		for (int i = 0 /*MELEE*/; i < 8 /*YSALIMARI*/; ++i)
+		for (int i = 0 /*MELEE*/; i < 9 /*YSALIMARI*/; ++i)
 		{
 			// upgrade it
 			*((DWORD*)Accounts_Prof_GetFieldData(acc) + i) = 5;				
