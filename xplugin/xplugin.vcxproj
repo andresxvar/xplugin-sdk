@@ -81,7 +81,7 @@
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
       <AdditionalIncludeDirectories>$(SolutionDir)Devkit;$(SolutionDir)Devkit\LugormodHeaders;$(SolutionDir)Devkit\CoreTypes;$(SolutionDir)qmm;$(SolutionDir)\jkasdk\game;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -130,6 +130,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="cmds.h" />
+    <ClInclude Include="entities.h" />
     <ClInclude Include="hook.h" />
     <ClInclude Include="interface.h" />
     <ClInclude Include="local.h" />
@@ -138,6 +139,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="cmds.cpp" />
+    <ClCompile Include="entities.cpp" />
     <ClCompile Include="hook.cpp" />
     <ClCompile Include="interface.cpp" />
     <ClCompile Include="main.cpp" />

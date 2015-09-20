@@ -162,7 +162,6 @@ int Cmd_slapother_f(gentity_t *player)
 	QMM_RET_SUPERCEDE(1);
 }
 
-// allskills (documented style)
 #define CMD_ALLSKILLS_COST 20; // the cost of using allskills command
 int forcePowerSide[]
 {
@@ -192,35 +191,30 @@ int forcePowerSide[]
 	//NUM_FORCE_POWERS
 };
 
+// Cmd_allskills_f
+// grant all skills to your profession
 int Cmd_allskills_f(gentity_t *player)
 {
 	int clientId = player->s.number; // the player's ID
 	Account_t *acc = player->client->pers.Lmd.account; // pointer to account data
 	int argumentsCount = g_syscall(G_ARGC); // number of arguments with command
-
-	/* Checking for a valid account is already done on ClientCommand function
-	if (!acc)
+	
+	// check balance
+	int creditBalance = acc->credits - CMD_ALLSKILLS_COST;
+	if (creditBalance < 0)
 	{
-		// the player does not have an account
-		// so the plugin should ignore this command
-		QMM_RET_IGNORED(1);// returns to lugormod to handle unknown command
+		LMDP_PRINTF(clientId, "You need CR%i more to get all skills", -creditBalance);
+		QMM_RET_SUPERCEDE(1); // supercede lugormod
 	}
-	*/
+
+	int professionNum = Lmdp_GetAccountProfession(acc);
+	int forceSide = 0; // default profession and force side
 
 	// check the argument count
 	if (argumentsCount > 1)
 	{
 		// player used /allskills with some additional arguments
-		// check balance
-		int creditBalance = acc->credits - CMD_ALLSKILLS_COST;
-		if (creditBalance < 0)
-		{
-			LMDP_PRINTF(clientId, "You need CR%i more to get all skills", -creditBalance);
-			QMM_RET_SUPERCEDE(1); // supercede lugormod
-		}
 
-		int professionNum = 0, forceSide = 0; // default profession and force side
-		
 		// acquire command argument
 		char arg[MAX_STRING_CHARS] = { 0 }; // a string of characters to hold an argument
 		g_syscall(G_ARGV, 1, arg, sizeof(arg)); // copies the 1st argument to 'args'
@@ -238,26 +232,28 @@ int Cmd_allskills_f(gentity_t *player)
 		else if (!Q_stricmpn(arg, "merc", arglen)) {
 			professionNum = PROFESSION_MERC;
 		}
-
-		if (professionNum > 0) {
-			// apply profession
-			Professions_ChooseProf(player, professionNum); // use lugormod's function to choose the right profession
-
-			if (professionNum == PROFESSION_FORCE) {
-				for (int i = FP_FIRST; i < NUM_FORCE_POWERS; ++i) {
-					if (forcePowerSide[i] == 0 || forcePowerSide[i] == forceSide)
-						*((DWORD*)Accounts_Prof_GetFieldData(acc) + i) = 5;
-				}
-			}
-			else if (professionNum == PROFESSION_MERC) {
-				for (int i = 0 /*MELEE*/; i < 9 /*YSALIMARI*/; ++i)
-					*((DWORD*)Accounts_Prof_GetFieldData(acc) + i) = 5;
-			}
-			LmdApi.accounts->setAccountCredits(acc, creditBalance); // apply credit balance
-			QMM_RET_SUPERCEDE(1); // return and supercede lugormod
-		}
 	}
+		
+	if (professionNum > 0) {
+		// apply profession
+		Professions_ChooseProf(player, professionNum); // use lugormod's function to choose the right profession
 
+		if (professionNum == PROFESSION_FORCE) {
+			for (int i = FP_FIRST; i < NUM_FORCE_POWERS; ++i) {
+				if (forcePowerSide[i] == 0 || forcePowerSide[i] == forceSide)
+					*((DWORD*)Accounts_Prof_GetFieldData(acc) + i) = 5;
+				else
+					*((DWORD*)Accounts_Prof_GetFieldData(acc) + i) = 0;
+			}
+		}
+		else if (professionNum == PROFESSION_MERC) {
+			for (int i = 0 /*MELEE*/; i < 9 /*YSALIMARI*/; ++i)
+				*((DWORD*)Accounts_Prof_GetFieldData(acc) + i) = 5;
+		}
+		LmdApi.accounts->setAccountCredits(acc, creditBalance); // apply credit balance
+		QMM_RET_SUPERCEDE(1); // return and supercede lugormod
+	}
+	
 	// player used /allskills without additional arguments
 	// or the argument failed to resolve into a valid profession number
 	// some information about the proper ussage is shown to the player
@@ -265,35 +261,50 @@ int Cmd_allskills_f(gentity_t *player)
 	QMM_RET_SUPERCEDE(1); // supercede lugormod
 }
 
+// Cmd_say_f
+// display 
+int ProfessionColor[]
+{
+	COLOR_GREEN, //PROFESSION_NONE,
+	COLOR_MAGENTA, //PROFESSION_GOD,
+	0, //PROFESSION_BOT,
+	COLOR_CYAN, //PROFESSION_FORCE,
+	COLOR_YELLOW, //PROFESSION_MERC,
+	0, //PROFESSION_MAX
+};
 int Cmd_say_f(gentity_t *player)
 {		
 	Account_t *acc = player->client->pers.Lmd.account;
-	int markerColor = 7; // default white
-	if (acc != NULL) 
+	int markerColor = COLOR_WHITE; // default white
+
+	// apply profession color
+	if (acc != NULL)
 	{
 		// player has acccount
-		
+
 		// get its profession
 		int profId = Lmdp_GetAccountProfession(acc);
 
-		if (profId == PROFESSION_MERC)
-			markerColor = 2;	// green for merc
-		else if (profId == PROFESSION_FORCE) {
-			if (player->client->ps.fd.forceSide == 2)
-				markerColor = 1; // red for sith
-			else
-				markerColor = 5; // light blue for jedi
+		if (profId > -1 && profId < PROFESSION_MAX) {
+			markerColor = ProfessionColor[profId];
+
+			if (profId == PROFESSION_FORCE) {
+				int forceSide = player->client->ps.fd.forceSide;
+
+				if (forceSide == FORCE_DARKSIDE)
+					markerColor = COLOR_RED;
+				else if (forceSide == FORCE_LIGHTSIDE)
+					markerColor = COLOR_BLUE;
+			}
 		}
 	}
-
-	int playerNum = NUM_FROM_ENT(player);
+	
 	char arg[MAX_STRING_TOKENS] = { 0 };
-
 	g_syscall(G_ARGV, 1, arg, sizeof(arg)); // chat message
 
 	// display chat message with player id and profession marker
 	LMDP_CHATF(-1, "^%i(^7%d^%i) ^7\x19%s: ^2%s",
-		markerColor, playerNum, markerColor, player->client->pers.netname, arg);
+		markerColor, NUM_FROM_ENT(player), markerColor, player->client->pers.netname, arg);
 
 	QMM_RET_SUPERCEDE(1); // supercede lugormod
 }
@@ -310,11 +321,6 @@ int Cmd_sskills_f(gentity_t *player)
 // for debuggin or testing
 int Cmd_ztest_f(gentity_t *player)
 {
-	int oldvnum = player->client->ps.m_iVehicleNum;
-	char arg[32] = { 0 };
-	g_syscall(G_ARGV, 1, arg, sizeof(arg));
-	
-	player->client->ps.m_iVehicleNum = atoi(arg);
 	QMM_RET_SUPERCEDE(1);
 }
 

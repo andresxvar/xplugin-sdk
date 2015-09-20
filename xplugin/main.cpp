@@ -1,5 +1,6 @@
 #include "main.h"
 #include "cmds.h"
+#include "entities.h"
 #include "utils.h"
 #include "qmmapi.h"
 
@@ -54,6 +55,7 @@ C_DLLEXPORT int QMM_Attach(eng_syscall_t engfunc, mod_vmMain_t modfunc,
 	iscmd = 0;
 	
 	if (LmdApi.Initialize()) {
+		Lmdp_RegisterEntities(); // register plugin classnames
 		PatchGame();
 		return 1;
 	}
@@ -84,8 +86,6 @@ C_DLLEXPORT int QMM_vmMain(int cmd, int arg0, int arg1, int arg2, int arg3,
 		// clear Lmdp_Player data for the disconnected player
 		memset(&Lmdp_Players[arg0], 0, sizeof(Lmdp_Players[arg0]));
 	}
-	
-
 	QMM_RET_IGNORED(1);
 }
 
